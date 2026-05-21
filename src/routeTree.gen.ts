@@ -9,61 +9,393 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as AppIndexRouteImport } from './routes/_app.index'
+import { Route as AppSuppliersRouteImport } from './routes/_app.suppliers'
+import { Route as AppSupplierPaymentsRouteImport } from './routes/_app.supplier-payments'
+import { Route as AppStockRouteImport } from './routes/_app.stock'
+import { Route as AppSettingsRouteImport } from './routes/_app.settings'
+import { Route as AppReportsRouteImport } from './routes/_app.reports'
+import { Route as AppPaymentsRouteImport } from './routes/_app.payments'
+import { Route as AppItemsRouteImport } from './routes/_app.items'
+import { Route as AppCustomersRouteImport } from './routes/_app.customers'
+import { Route as AppSuppliersIdRouteImport } from './routes/_app.suppliers.$id'
+import { Route as AppPurchasesNewRouteImport } from './routes/_app.purchases.new'
+import { Route as AppInvoicesNewRouteImport } from './routes/_app.invoices.new'
+import { Route as AppInvoicesIdRouteImport } from './routes/_app.invoices.$id'
+import { Route as AppCustomersIdRouteImport } from './routes/_app.customers.$id'
 
-const IndexRoute = IndexRouteImport.update({
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSuppliersRoute = AppSuppliersRouteImport.update({
+  id: '/suppliers',
+  path: '/suppliers',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSupplierPaymentsRoute = AppSupplierPaymentsRouteImport.update({
+  id: '/supplier-payments',
+  path: '/supplier-payments',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppStockRoute = AppStockRouteImport.update({
+  id: '/stock',
+  path: '/stock',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppReportsRoute = AppReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPaymentsRoute = AppPaymentsRouteImport.update({
+  id: '/payments',
+  path: '/payments',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppItemsRoute = AppItemsRouteImport.update({
+  id: '/items',
+  path: '/items',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCustomersRoute = AppCustomersRouteImport.update({
+  id: '/customers',
+  path: '/customers',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSuppliersIdRoute = AppSuppliersIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppSuppliersRoute,
+} as any)
+const AppPurchasesNewRoute = AppPurchasesNewRouteImport.update({
+  id: '/purchases/new',
+  path: '/purchases/new',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppInvoicesNewRoute = AppInvoicesNewRouteImport.update({
+  id: '/invoices/new',
+  path: '/invoices/new',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppInvoicesIdRoute = AppInvoicesIdRouteImport.update({
+  id: '/invoices/$id',
+  path: '/invoices/$id',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCustomersIdRoute = AppCustomersIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppCustomersRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof AppIndexRoute
+  '/login': typeof LoginRoute
+  '/customers': typeof AppCustomersRouteWithChildren
+  '/items': typeof AppItemsRoute
+  '/payments': typeof AppPaymentsRoute
+  '/reports': typeof AppReportsRoute
+  '/settings': typeof AppSettingsRoute
+  '/stock': typeof AppStockRoute
+  '/supplier-payments': typeof AppSupplierPaymentsRoute
+  '/suppliers': typeof AppSuppliersRouteWithChildren
+  '/customers/$id': typeof AppCustomersIdRoute
+  '/invoices/$id': typeof AppInvoicesIdRoute
+  '/invoices/new': typeof AppInvoicesNewRoute
+  '/purchases/new': typeof AppPurchasesNewRoute
+  '/suppliers/$id': typeof AppSuppliersIdRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/customers': typeof AppCustomersRouteWithChildren
+  '/items': typeof AppItemsRoute
+  '/payments': typeof AppPaymentsRoute
+  '/reports': typeof AppReportsRoute
+  '/settings': typeof AppSettingsRoute
+  '/stock': typeof AppStockRoute
+  '/supplier-payments': typeof AppSupplierPaymentsRoute
+  '/suppliers': typeof AppSuppliersRouteWithChildren
+  '/': typeof AppIndexRoute
+  '/customers/$id': typeof AppCustomersIdRoute
+  '/invoices/$id': typeof AppInvoicesIdRoute
+  '/invoices/new': typeof AppInvoicesNewRoute
+  '/purchases/new': typeof AppPurchasesNewRoute
+  '/suppliers/$id': typeof AppSuppliersIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/_app': typeof AppRouteWithChildren
+  '/login': typeof LoginRoute
+  '/_app/customers': typeof AppCustomersRouteWithChildren
+  '/_app/items': typeof AppItemsRoute
+  '/_app/payments': typeof AppPaymentsRoute
+  '/_app/reports': typeof AppReportsRoute
+  '/_app/settings': typeof AppSettingsRoute
+  '/_app/stock': typeof AppStockRoute
+  '/_app/supplier-payments': typeof AppSupplierPaymentsRoute
+  '/_app/suppliers': typeof AppSuppliersRouteWithChildren
+  '/_app/': typeof AppIndexRoute
+  '/_app/customers/$id': typeof AppCustomersIdRoute
+  '/_app/invoices/$id': typeof AppInvoicesIdRoute
+  '/_app/invoices/new': typeof AppInvoicesNewRoute
+  '/_app/purchases/new': typeof AppPurchasesNewRoute
+  '/_app/suppliers/$id': typeof AppSuppliersIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/customers'
+    | '/items'
+    | '/payments'
+    | '/reports'
+    | '/settings'
+    | '/stock'
+    | '/supplier-payments'
+    | '/suppliers'
+    | '/customers/$id'
+    | '/invoices/$id'
+    | '/invoices/new'
+    | '/purchases/new'
+    | '/suppliers/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/login'
+    | '/customers'
+    | '/items'
+    | '/payments'
+    | '/reports'
+    | '/settings'
+    | '/stock'
+    | '/supplier-payments'
+    | '/suppliers'
+    | '/'
+    | '/customers/$id'
+    | '/invoices/$id'
+    | '/invoices/new'
+    | '/purchases/new'
+    | '/suppliers/$id'
+  id:
+    | '__root__'
+    | '/_app'
+    | '/login'
+    | '/_app/customers'
+    | '/_app/items'
+    | '/_app/payments'
+    | '/_app/reports'
+    | '/_app/settings'
+    | '/_app/stock'
+    | '/_app/supplier-payments'
+    | '/_app/suppliers'
+    | '/_app/'
+    | '/_app/customers/$id'
+    | '/_app/invoices/$id'
+    | '/_app/invoices/new'
+    | '/_app/purchases/new'
+    | '/_app/suppliers/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRouteWithChildren
+  LoginRoute: typeof LoginRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/': {
+      id: '/_app/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/suppliers': {
+      id: '/_app/suppliers'
+      path: '/suppliers'
+      fullPath: '/suppliers'
+      preLoaderRoute: typeof AppSuppliersRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/supplier-payments': {
+      id: '/_app/supplier-payments'
+      path: '/supplier-payments'
+      fullPath: '/supplier-payments'
+      preLoaderRoute: typeof AppSupplierPaymentsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/stock': {
+      id: '/_app/stock'
+      path: '/stock'
+      fullPath: '/stock'
+      preLoaderRoute: typeof AppStockRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings': {
+      id: '/_app/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/reports': {
+      id: '/_app/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof AppReportsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/payments': {
+      id: '/_app/payments'
+      path: '/payments'
+      fullPath: '/payments'
+      preLoaderRoute: typeof AppPaymentsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/items': {
+      id: '/_app/items'
+      path: '/items'
+      fullPath: '/items'
+      preLoaderRoute: typeof AppItemsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/customers': {
+      id: '/_app/customers'
+      path: '/customers'
+      fullPath: '/customers'
+      preLoaderRoute: typeof AppCustomersRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/suppliers/$id': {
+      id: '/_app/suppliers/$id'
+      path: '/$id'
+      fullPath: '/suppliers/$id'
+      preLoaderRoute: typeof AppSuppliersIdRouteImport
+      parentRoute: typeof AppSuppliersRoute
+    }
+    '/_app/purchases/new': {
+      id: '/_app/purchases/new'
+      path: '/purchases/new'
+      fullPath: '/purchases/new'
+      preLoaderRoute: typeof AppPurchasesNewRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/invoices/new': {
+      id: '/_app/invoices/new'
+      path: '/invoices/new'
+      fullPath: '/invoices/new'
+      preLoaderRoute: typeof AppInvoicesNewRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/invoices/$id': {
+      id: '/_app/invoices/$id'
+      path: '/invoices/$id'
+      fullPath: '/invoices/$id'
+      preLoaderRoute: typeof AppInvoicesIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/customers/$id': {
+      id: '/_app/customers/$id'
+      path: '/$id'
+      fullPath: '/customers/$id'
+      preLoaderRoute: typeof AppCustomersIdRouteImport
+      parentRoute: typeof AppCustomersRoute
     }
   }
 }
 
+interface AppCustomersRouteChildren {
+  AppCustomersIdRoute: typeof AppCustomersIdRoute
+}
+
+const AppCustomersRouteChildren: AppCustomersRouteChildren = {
+  AppCustomersIdRoute: AppCustomersIdRoute,
+}
+
+const AppCustomersRouteWithChildren = AppCustomersRoute._addFileChildren(
+  AppCustomersRouteChildren,
+)
+
+interface AppSuppliersRouteChildren {
+  AppSuppliersIdRoute: typeof AppSuppliersIdRoute
+}
+
+const AppSuppliersRouteChildren: AppSuppliersRouteChildren = {
+  AppSuppliersIdRoute: AppSuppliersIdRoute,
+}
+
+const AppSuppliersRouteWithChildren = AppSuppliersRoute._addFileChildren(
+  AppSuppliersRouteChildren,
+)
+
+interface AppRouteChildren {
+  AppCustomersRoute: typeof AppCustomersRouteWithChildren
+  AppItemsRoute: typeof AppItemsRoute
+  AppPaymentsRoute: typeof AppPaymentsRoute
+  AppReportsRoute: typeof AppReportsRoute
+  AppSettingsRoute: typeof AppSettingsRoute
+  AppStockRoute: typeof AppStockRoute
+  AppSupplierPaymentsRoute: typeof AppSupplierPaymentsRoute
+  AppSuppliersRoute: typeof AppSuppliersRouteWithChildren
+  AppIndexRoute: typeof AppIndexRoute
+  AppInvoicesIdRoute: typeof AppInvoicesIdRoute
+  AppInvoicesNewRoute: typeof AppInvoicesNewRoute
+  AppPurchasesNewRoute: typeof AppPurchasesNewRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppCustomersRoute: AppCustomersRouteWithChildren,
+  AppItemsRoute: AppItemsRoute,
+  AppPaymentsRoute: AppPaymentsRoute,
+  AppReportsRoute: AppReportsRoute,
+  AppSettingsRoute: AppSettingsRoute,
+  AppStockRoute: AppStockRoute,
+  AppSupplierPaymentsRoute: AppSupplierPaymentsRoute,
+  AppSuppliersRoute: AppSuppliersRouteWithChildren,
+  AppIndexRoute: AppIndexRoute,
+  AppInvoicesIdRoute: AppInvoicesIdRoute,
+  AppInvoicesNewRoute: AppInvoicesNewRoute,
+  AppPurchasesNewRoute: AppPurchasesNewRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  AppRoute: AppRouteWithChildren,
+  LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
