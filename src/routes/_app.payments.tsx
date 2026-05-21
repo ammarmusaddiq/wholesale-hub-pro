@@ -47,7 +47,7 @@ function PaymentsPage() {
     try {
       const { error } = await supabase.rpc("record_customer_payment", {
         p_customer_id: customerId, p_amount: amt, p_method: method,
-        p_invoice_id: invoiceId || null, p_note: note || null,
+        p_invoice_id: (invoiceId || null) as any, p_note: (note || null) as any,
       });
       if (error) throw error;
       toast.success("Payment recorded");
