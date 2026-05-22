@@ -38,7 +38,7 @@ function Page() {
     setBusy(true);
     try {
       const { error } = await supabase.rpc("record_supplier_payment", {
-        p_supplier_id: supplierId, p_amount: Number(amount), p_method: method, p_note: note || null,
+        p_supplier_id: supplierId, p_amount: Number(amount), p_method: method, p_note: (note || null) as any,
       });
       if (error) throw error;
       toast.success("Payment recorded");
