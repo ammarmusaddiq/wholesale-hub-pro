@@ -1,18 +1,21 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectSeparator } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { fmtRs } from "@/lib/i18n";
 import { useMemo, useState, useEffect } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, UserPlus } from "lucide-react";
 import { z } from "zod";
 
 const searchSchema = z.object({ customer: z.string().optional() });
+const ADD_NEW = "__add_new__";
 
 export const Route = createFileRoute("/_app/invoices/new")({
   component: NewInvoice,
@@ -23,11 +26,13 @@ interface LineItem { item_id: string; quantity: string; unit_price: string; }
 
 function NewInvoice() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const search = Route.useSearch();
   const [customerId, setCustomerId] = useState(search.customer ?? "");
   const [lines, setLines] = useState<LineItem[]>([{ item_id: "", quantity: "", unit_price: "" }]);
   const [paid, setPaid] = useState("0");
   const [busy, setBusy] = useState(false);
+  const [addCustomerOpen, setAddCustomerOpen] = useState(false);
 
   const { data } = useQuery({
     queryKey: ["new-invoice-data"],
@@ -114,14 +119,35 @@ function NewInvoice() {
 
       <Card className="p-5 space-y-3">
         <Label>Customer / گاہک</Label>
-        <Select value={customerId} onValueChange={setCustomerId}>
+        <Select
+          value={customerId}
+          onValueChange={(v) => {
+            if (v === ADD_NEW) { setAddCustomerOpen(true); return; }
+            setCustomerId(v);
+          }}
+        >
           <SelectTrigger className="h-11"><SelectValue placeholder="Select customer" /></SelectTrigger>
-          <SelectContent>{data?.customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name} {c.phone ? `· ${c.phone}` : ""}</SelectItem>)}</SelectContent>
+          <SelectContent>
+            {data?.customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name} {c.phone ? `· ${c.phone}` : ""}</SelectItem>)}
+            {data?.customers.length ? <SelectSeparator /> : null}
+            <SelectItem value={ADD_NEW}>
+              <span className="flex items-center text-primary font-medium"><UserPlus className="h-4 w-4 mr-2" /> Add New Customer — نیا گاہک شامل کریں</span>
+            </SelectItem>
+          </SelectContent>
         </Select>
         {selectedCustomer && (
           <div className="text-sm text-muted-foreground">Current balance: <span className={Number(selectedCustomer.current_balance) > 0 ? "text-destructive font-medium" : "text-success font-medium"}>{fmtRs(selectedCustomer.current_balance)}</span></div>
         )}
       </Card>
+
+      <AddCustomerInlineDialog
+        open={addCustomerOpen}
+        onOpenChange={setAddCustomerOpen}
+        onAdded={(id) => {
+          qc.invalidateQueries({ queryKey: ["new-invoice-data"] });
+          setCustomerId(id);
+        }}
+      />
 
       <Card className="p-5 space-y-3">
         <div className="flex justify-between items-center">
@@ -183,5 +209,54 @@ function NewInvoice() {
         <Button className="w-full h-12 text-base" onClick={submit} disabled={busy}>{busy ? "Saving…" : "Create Invoice / رسید بنائیں"}</Button>
       </Card>
     </div>
+  );
+}
+
+function AddCustomerInlineDialog({ open, onOpenChange, onAdded }: { open: boolean; onOpenChange: (o: boolean) => void; onAdded: (id: string) => void }) {
+  const [form, setForm] = useState({ name: "", phone: "", address: "", opening_balance: "0" });
+  const [saving, setSaving] = useState(false);
+  const submit = async () => {
+    if (!form.name.trim()) { toast.error("Name required"); return; }
+    setSaving(true);
+    try {
+      const ob = Number(form.opening_balance) || 0;
+      const { data, error } = await supabase.from("customers").insert({
+        name: form.name.trim(), phone: form.phone, address: form.address,
+        opening_balance: ob, current_balance: ob,
+      }).select().single();
+      if (error) throw error;
+      if (ob !== 0 && data) {
+        await supabase.from("customer_ledger").insert({
+          customer_id: data.id, entry_type: "opening",
+          debit: ob > 0 ? ob : 0, credit: ob < 0 ? -ob : 0,
+          balance_after: ob, note: "Opening balance",
+        });
+      }
+      toast.success("Customer added successfully");
+      onAdded(data!.id);
+      setForm({ name: "", phone: "", address: "", opening_balance: "0" });
+      onOpenChange(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Add New Customer / نیا گاہک</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div><Label>Name *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus /></div>
+          <div><Label>Phone</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
+          <div><Label>Address</Label><Textarea value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
+          <div><Label>Opening Balance (Rs)</Label><Input type="number" value={form.opening_balance} onChange={(e) => setForm({ ...form, opening_balance: e.target.value })} /></div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button>
+          <Button onClick={submit} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
