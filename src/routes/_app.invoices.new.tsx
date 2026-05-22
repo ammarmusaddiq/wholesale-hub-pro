@@ -211,3 +211,52 @@ function NewInvoice() {
     </div>
   );
 }
+
+function AddCustomerInlineDialog({ open, onOpenChange, onAdded }: { open: boolean; onOpenChange: (o: boolean) => void; onAdded: (id: string) => void }) {
+  const [form, setForm] = useState({ name: "", phone: "", address: "", opening_balance: "0" });
+  const [saving, setSaving] = useState(false);
+  const submit = async () => {
+    if (!form.name.trim()) { toast.error("Name required"); return; }
+    setSaving(true);
+    try {
+      const ob = Number(form.opening_balance) || 0;
+      const { data, error } = await supabase.from("customers").insert({
+        name: form.name.trim(), phone: form.phone, address: form.address,
+        opening_balance: ob, current_balance: ob,
+      }).select().single();
+      if (error) throw error;
+      if (ob !== 0 && data) {
+        await supabase.from("customer_ledger").insert({
+          customer_id: data.id, entry_type: "opening",
+          debit: ob > 0 ? ob : 0, credit: ob < 0 ? -ob : 0,
+          balance_after: ob, note: "Opening balance",
+        });
+      }
+      toast.success("Customer added successfully");
+      onAdded(data!.id);
+      setForm({ name: "", phone: "", address: "", opening_balance: "0" });
+      onOpenChange(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Add New Customer / نیا گاہک</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div><Label>Name *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus /></div>
+          <div><Label>Phone</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
+          <div><Label>Address</Label><Textarea value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
+          <div><Label>Opening Balance (Rs)</Label><Input type="number" value={form.opening_balance} onChange={(e) => setForm({ ...form, opening_balance: e.target.value })} /></div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button>
+          <Button onClick={submit} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
