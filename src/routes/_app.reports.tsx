@@ -461,6 +461,7 @@ function MetricCard({
 function ItemsTab({ fromIso, toIso }: { fromIso: string; toIso: string }) {
   const { data: range, isLoading: l1 } = useRangeData(fromIso, toIso);
   const { data: allPur, isLoading: l2 } = useAllPurchaseItems();
+  const { data: allInv, isLoading: l3 } = useAllInvoiceItems();
 
   const { data: items } = useQuery({
     queryKey: ["reports-items-list"],
@@ -473,7 +474,7 @@ function ItemsTab({ fromIso, toIso }: { fromIso: string; toIso: string }) {
   });
 
   const rows = useMemo(() => {
-    if (!items || !range || !allPur) return [];
+    if (!items || !range || !allPur || !allInv) return [];
     const stockMap = new Map((stock ?? []).map((s) => [s.item_id, Number(s.quantity)]));
     const purByItem = new Map<string, any[]>();
     allPur.forEach((r: any) => {
@@ -481,32 +482,23 @@ function ItemsTab({ fromIso, toIso }: { fromIso: string; toIso: string }) {
       a.push(r);
       purByItem.set(r.item_id, a);
     });
+    const salesByItem = new Map<string, any[]>();
+    allInv.forEach((r: any) => {
+      const a = salesByItem.get(r.item_id) ?? [];
+      a.push(r);
+      salesByItem.set(r.item_id, a);
+    });
 
     return items.map((it) => {
       const purs = purByItem.get(it.id) ?? [];
-      const avgCost = weightedAvgCost(purs);
+      const allSales = salesByItem.get(it.id) ?? [];
+      const { finalAvg: avgCost, batches } = computeStockAwareAvg(purs, allSales);
       const sales = range.invoiceItems.filter((r: any) => r.item_id === it.id);
       const soldQty = sales.reduce((s, r: any) => s + Number(r.quantity), 0);
       const revenue = sales.reduce((s, r: any) => s + Number(r.line_total), 0);
       const avgSell = soldQty > 0 ? revenue / soldQty : 0;
       const profit = revenue - soldQty * avgCost;
       const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
-      // running avg batches
-      let runQty = 0;
-      let runCost = 0;
-      const batches = purs.map((r: any) => {
-        const q = Number(r.quantity);
-        const p = Number(r.unit_price);
-        runCost = runQty + q > 0 ? (runQty * (runQty > 0 ? runCost / runQty : 0) + q * p) / (runQty + q) : 0;
-        runQty += q;
-        return {
-          date: r.purchases.created_at.slice(0, 10),
-          supplier: r.purchases.suppliers?.name ?? "—",
-          qty: q,
-          unitCost: p,
-          avgAfter: runCost,
-        };
-      });
       return {
         id: it.id,
         nameEn: it.name_en,
@@ -523,9 +515,9 @@ function ItemsTab({ fromIso, toIso }: { fromIso: string; toIso: string }) {
         batches,
       };
     });
-  }, [items, range, allPur, stock]);
+  }, [items, range, allPur, allInv, stock]);
 
-  if (l1 || l2) return <LoadingBlock />;
+  if (l1 || l2 || l3) return <LoadingBlock />;
   if (rows.length === 0) return <EmptyState msg="No items defined" />;
 
   const chartData = rows.map((r) => ({ name: r.nameEn, profit: Math.round(r.profit) }));
