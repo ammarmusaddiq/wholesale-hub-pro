@@ -157,6 +157,71 @@ function useAllPurchaseItems() {
   });
 }
 
+function useAllInvoiceItems() {
+  return useQuery({
+    queryKey: ["reports-all-invoice-items"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("invoice_items")
+        .select("item_id, quantity, invoices!inner(created_at)")
+        .order("created_at", { ascending: true, referencedTable: "invoices" });
+      return data ?? [];
+    },
+  });
+}
+
+// Stock-aware weighted average cost.
+// Processes purchases AND sales chronologically. Sales reduce qty but leave avg unchanged.
+function computeStockAwareAvg(
+  purchases: any[],
+  sales: any[],
+): { finalAvg: number; batches: any[] } {
+  type Ev =
+    | { date: string; type: "purchase"; qty: number; price: number; supplier: string }
+    | { date: string; type: "sale"; qty: number };
+  const events: Ev[] = [];
+  purchases.forEach((r: any) => {
+    events.push({
+      date: r.purchases?.created_at ?? "",
+      type: "purchase",
+      qty: Number(r.quantity),
+      price: Number(r.unit_price),
+      supplier: r.purchases?.suppliers?.name ?? "—",
+    });
+  });
+  sales.forEach((r: any) => {
+    events.push({
+      date: r.invoices?.created_at ?? "",
+      type: "sale",
+      qty: Number(r.quantity),
+    });
+  });
+  events.sort((a, b) => a.date.localeCompare(b.date));
+
+  let stock = 0;
+  let avg = 0;
+  const batches: any[] = [];
+  for (const ev of events) {
+    if (ev.type === "purchase") {
+      const baseQty = Math.max(stock, 0);
+      const denom = baseQty + ev.qty;
+      const newAvg = denom > 0 ? (baseQty * avg + ev.qty * ev.price) / denom : ev.price;
+      stock += ev.qty;
+      avg = newAvg;
+      batches.push({
+        date: ev.date.slice(0, 10),
+        supplier: ev.supplier,
+        qty: ev.qty,
+        unitCost: ev.price,
+        avgAfter: Math.round(newAvg * 100) / 100,
+      });
+    } else {
+      stock -= ev.qty;
+    }
+  }
+  return { finalAvg: avg, batches };
+}
+
 function weightedAvgCost(rows: { quantity: number | string; unit_price: number | string }[]) {
   let totalQty = 0;
   let totalCost = 0;
@@ -396,6 +461,7 @@ function MetricCard({
 function ItemsTab({ fromIso, toIso }: { fromIso: string; toIso: string }) {
   const { data: range, isLoading: l1 } = useRangeData(fromIso, toIso);
   const { data: allPur, isLoading: l2 } = useAllPurchaseItems();
+  const { data: allInv, isLoading: l3 } = useAllInvoiceItems();
 
   const { data: items } = useQuery({
     queryKey: ["reports-items-list"],
@@ -408,7 +474,7 @@ function ItemsTab({ fromIso, toIso }: { fromIso: string; toIso: string }) {
   });
 
   const rows = useMemo(() => {
-    if (!items || !range || !allPur) return [];
+    if (!items || !range || !allPur || !allInv) return [];
     const stockMap = new Map((stock ?? []).map((s) => [s.item_id, Number(s.quantity)]));
     const purByItem = new Map<string, any[]>();
     allPur.forEach((r: any) => {
@@ -416,32 +482,23 @@ function ItemsTab({ fromIso, toIso }: { fromIso: string; toIso: string }) {
       a.push(r);
       purByItem.set(r.item_id, a);
     });
+    const salesByItem = new Map<string, any[]>();
+    allInv.forEach((r: any) => {
+      const a = salesByItem.get(r.item_id) ?? [];
+      a.push(r);
+      salesByItem.set(r.item_id, a);
+    });
 
     return items.map((it) => {
       const purs = purByItem.get(it.id) ?? [];
-      const avgCost = weightedAvgCost(purs);
+      const allSales = salesByItem.get(it.id) ?? [];
+      const { finalAvg: avgCost, batches } = computeStockAwareAvg(purs, allSales);
       const sales = range.invoiceItems.filter((r: any) => r.item_id === it.id);
       const soldQty = sales.reduce((s, r: any) => s + Number(r.quantity), 0);
       const revenue = sales.reduce((s, r: any) => s + Number(r.line_total), 0);
       const avgSell = soldQty > 0 ? revenue / soldQty : 0;
       const profit = revenue - soldQty * avgCost;
       const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
-      // running avg batches
-      let runQty = 0;
-      let runCost = 0;
-      const batches = purs.map((r: any) => {
-        const q = Number(r.quantity);
-        const p = Number(r.unit_price);
-        runCost = runQty + q > 0 ? (runQty * (runQty > 0 ? runCost / runQty : 0) + q * p) / (runQty + q) : 0;
-        runQty += q;
-        return {
-          date: r.purchases.created_at.slice(0, 10),
-          supplier: r.purchases.suppliers?.name ?? "—",
-          qty: q,
-          unitCost: p,
-          avgAfter: runCost,
-        };
-      });
       return {
         id: it.id,
         nameEn: it.name_en,
@@ -458,9 +515,9 @@ function ItemsTab({ fromIso, toIso }: { fromIso: string; toIso: string }) {
         batches,
       };
     });
-  }, [items, range, allPur, stock]);
+  }, [items, range, allPur, allInv, stock]);
 
-  if (l1 || l2) return <LoadingBlock />;
+  if (l1 || l2 || l3) return <LoadingBlock />;
   if (rows.length === 0) return <EmptyState msg="No items defined" />;
 
   const chartData = rows.map((r) => ({ name: r.nameEn, profit: Math.round(r.profit) }));
