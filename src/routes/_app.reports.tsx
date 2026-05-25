@@ -157,6 +157,71 @@ function useAllPurchaseItems() {
   });
 }
 
+function useAllInvoiceItems() {
+  return useQuery({
+    queryKey: ["reports-all-invoice-items"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("invoice_items")
+        .select("item_id, quantity, invoices!inner(created_at)")
+        .order("created_at", { ascending: true, referencedTable: "invoices" });
+      return data ?? [];
+    },
+  });
+}
+
+// Stock-aware weighted average cost.
+// Processes purchases AND sales chronologically. Sales reduce qty but leave avg unchanged.
+function computeStockAwareAvg(
+  purchases: any[],
+  sales: any[],
+): { finalAvg: number; batches: any[] } {
+  type Ev =
+    | { date: string; type: "purchase"; qty: number; price: number; supplier: string }
+    | { date: string; type: "sale"; qty: number };
+  const events: Ev[] = [];
+  purchases.forEach((r: any) => {
+    events.push({
+      date: r.purchases?.created_at ?? "",
+      type: "purchase",
+      qty: Number(r.quantity),
+      price: Number(r.unit_price),
+      supplier: r.purchases?.suppliers?.name ?? "—",
+    });
+  });
+  sales.forEach((r: any) => {
+    events.push({
+      date: r.invoices?.created_at ?? "",
+      type: "sale",
+      qty: Number(r.quantity),
+    });
+  });
+  events.sort((a, b) => a.date.localeCompare(b.date));
+
+  let stock = 0;
+  let avg = 0;
+  const batches: any[] = [];
+  for (const ev of events) {
+    if (ev.type === "purchase") {
+      const baseQty = Math.max(stock, 0);
+      const denom = baseQty + ev.qty;
+      const newAvg = denom > 0 ? (baseQty * avg + ev.qty * ev.price) / denom : ev.price;
+      stock += ev.qty;
+      avg = newAvg;
+      batches.push({
+        date: ev.date.slice(0, 10),
+        supplier: ev.supplier,
+        qty: ev.qty,
+        unitCost: ev.price,
+        avgAfter: Math.round(newAvg * 100) / 100,
+      });
+    } else {
+      stock -= ev.qty;
+    }
+  }
+  return { finalAvg: avg, batches };
+}
+
 function weightedAvgCost(rows: { quantity: number | string; unit_price: number | string }[]) {
   let totalQty = 0;
   let totalCost = 0;
