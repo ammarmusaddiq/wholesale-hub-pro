@@ -84,11 +84,11 @@ function SettingsPage() {
         supabase.from("items").select("id, name_en, name_ur, unit").order("name_en"),
         (supabase as any).from("labor_charges").select("item_id, charge_per_unit, unit_label"),
       ]);
-      const chargeMap = new Map((chargesData ?? []).map((c: any) => [c.item_id, c]));
+      const chargeMap = new Map<any, any>((chargesData ?? []).map((c: any) => [c.item_id, c]));
       return (itemsData ?? []).map((it: any) => ({
         ...it,
-        charge_per_unit: chargeMap.get(it.id)?.charge_per_unit ?? 0,
-        unit_label: chargeMap.get(it.id)?.unit_label ?? "per unit",
+        charge_per_unit: (chargeMap.get(it.id) as any)?.charge_per_unit ?? 0,
+        unit_label: (chargeMap.get(it.id) as any)?.unit_label ?? "per unit",
       }));
     },
   });
