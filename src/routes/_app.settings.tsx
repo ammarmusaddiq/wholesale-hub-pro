@@ -11,6 +11,47 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+function LaborChargeRow({ item, onSave }: { item: any; onSave: () => void }) {
+  const { user } = useAuth();
+  const [charge, setCharge] = useState(String(item.charge_per_unit ?? 0));
+  const [label, setLabel] = useState(item.unit_label ?? "per unit");
+
+  useEffect(() => {
+    setCharge(String(item.charge_per_unit ?? 0));
+    setLabel(item.unit_label ?? "per unit");
+  }, [item.charge_per_unit, item.unit_label]);
+
+  const save = async () => {
+    const chargeNum = parseFloat(charge);
+    if (isNaN(chargeNum) || chargeNum < 0) { toast.error("Enter valid charge"); return; }
+    const { error } = await (supabase as any).from("labor_charges").upsert({
+      item_id: item.id,
+      charge_per_unit: chargeNum,
+      unit_label: label,
+      updated_by: user?.id,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "item_id" });
+    if (error) { toast.error(error.message); return; }
+    toast.success(`Labor charge updated for ${item.name_en}`);
+    onSave();
+  };
+
+  return (
+    <div className="flex items-center justify-between gap-2 py-2 border-b">
+      <div className="flex-1 min-w-0">
+        <div className="font-medium text-sm truncate">{item.name_en} <span className="urdu text-xs text-muted-foreground">{item.name_ur}</span></div>
+      </div>
+      <span className="text-xs text-muted-foreground w-10 shrink-0">{item.unit}</span>
+      <div className="flex items-center gap-1 w-24 shrink-0">
+        <span className="text-xs text-muted-foreground">₨</span>
+        <Input type="number" step="0.01" value={charge} onChange={(e) => setCharge(e.target.value)} className="h-8 px-2" />
+      </div>
+      <Input value={label} onChange={(e) => setLabel(e.target.value)} className="w-32 h-8 px-2 shrink-0" placeholder="per unit" />
+      <Button size="sm" onClick={save} className="shrink-0 h-8">Save</Button>
+    </div>
+  );
+}
+
 export const Route = createFileRoute("/_app/settings")({ component: SettingsPage });
 
 function SettingsPage() {
@@ -33,6 +74,22 @@ function SettingsPage() {
       const { data: profs } = await supabase.from("profiles").select("id, full_name");
       const { data: roles } = await supabase.from("user_roles").select("user_id, role");
       return (profs ?? []).map((p) => ({ ...p, role: roles?.find((r) => r.user_id === p.id)?.role ?? "staff" }));
+    },
+  });
+
+  const { data: laborItems } = useQuery({
+    queryKey: ["labor-charges"],
+    queryFn: async () => {
+      const [{ data: itemsData }, { data: chargesData }] = await Promise.all([
+        supabase.from("items").select("id, name_en, name_ur, unit").order("name_en"),
+        (supabase as any).from("labor_charges").select("item_id, charge_per_unit, unit_label"),
+      ]);
+      const chargeMap = new Map<any, any>((chargesData ?? []).map((c: any) => [c.item_id, c]));
+      return (itemsData ?? []).map((it: any) => ({
+        ...it,
+        charge_per_unit: (chargeMap.get(it.id) as any)?.charge_per_unit ?? 0,
+        unit_label: (chargeMap.get(it.id) as any)?.unit_label ?? "per unit",
+      }));
     },
   });
 
@@ -103,6 +160,15 @@ function SettingsPage() {
               </SelectContent>
             </Select>
           </div>
+        ))}
+      </Card>
+
+      <Card className="p-5 space-y-3">
+        <h2 className="font-semibold">Labor Charges — مزدوری / محنت</h2>
+        <p className="text-xs text-muted-foreground">Set labor cost per unit for each item (added to every invoice)</p>
+        {laborItems?.length === 0 && <p className="text-sm text-muted-foreground">No items found.</p>}
+        {laborItems?.map((it) => (
+          <LaborChargeRow key={it.id} item={it} onSave={() => qc.invalidateQueries({ queryKey: ["labor-charges"] })} />
         ))}
       </Card>
     </div>
