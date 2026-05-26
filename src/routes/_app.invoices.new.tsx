@@ -164,35 +164,47 @@ function NewInvoice() {
       <Card className="p-5 space-y-3">
         <div className="flex justify-between items-center">
           <h2 className="font-semibold">Items / اشیاء</h2>
-          <Button size="sm" variant="outline" onClick={() => setLines([...lines, { item_id: "", quantity: "", unit_price: "" }])}>
+          <Button size="sm" variant="outline" onClick={() => setLines([...lines, { item_id: "", quantity: "", unit_price: "", labor_per_unit: "" }])}>
             <Plus className="h-4 w-4 mr-1" /> Add Item
           </Button>
         </div>
         <div className="space-y-3">
           {lines.map((line, i) => {
-            const lineTotal = (Number(line.quantity) || 0) * (Number(line.unit_price) || 0);
+            const qty = Number(line.quantity) || 0;
+            const price = Number(line.unit_price) || 0;
+            const labor = Number(line.labor_per_unit) || 0;
+            const laborTotal = qty * labor;
+            const lineTotal = qty * price + laborTotal;
             return (
-              <div key={i} className="grid grid-cols-12 gap-2 items-end">
-                <div className="col-span-12 sm:col-span-5">
+              <div key={i} className="grid grid-cols-12 gap-2 items-end border-b pb-3 last:border-b-0 last:pb-0">
+                <div className="col-span-12 sm:col-span-4">
                   <Label className="text-xs">Item</Label>
                   <Select value={line.item_id} onValueChange={(v) => onItemChange(i, v)}>
                     <SelectTrigger className="h-11"><SelectValue placeholder="Select" /></SelectTrigger>
                     <SelectContent>{data?.items.map((it) => <SelectItem key={it.id} value={it.id}>{it.name_en} ({it.unit})</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
-                <div className="col-span-4 sm:col-span-2">
+                <div className="col-span-3 sm:col-span-1">
                   <Label className="text-xs">Qty</Label>
                   <Input type="number" inputMode="decimal" className="h-11" value={line.quantity} onChange={(e) => updateLine(i, { quantity: e.target.value })} />
                 </div>
-                <div className="col-span-4 sm:col-span-2">
+                <div className="col-span-3 sm:col-span-2">
                   <Label className="text-xs">Price</Label>
                   <Input type="number" inputMode="decimal" className="h-11" value={line.unit_price} onChange={(e) => updateLine(i, { unit_price: e.target.value })} />
                 </div>
-                <div className="col-span-3 sm:col-span-2 text-right">
+                <div className="col-span-3 sm:col-span-2">
+                  <Label className="text-xs">Labor/Unit</Label>
+                  <Input type="number" inputMode="decimal" className="h-11" value={line.labor_per_unit} onChange={(e) => updateLine(i, { labor_per_unit: e.target.value })} />
+                </div>
+                <div className="col-span-3 sm:col-span-1 text-right">
+                  <Label className="text-xs">Labor</Label>
+                  <div className="h-11 flex items-center justify-end text-sm">{fmtRs(laborTotal)}</div>
+                </div>
+                <div className="col-span-9 sm:col-span-1 text-right">
                   <Label className="text-xs">Total</Label>
                   <div className="h-11 flex items-center justify-end font-semibold">{fmtRs(lineTotal)}</div>
                 </div>
-                <div className="col-span-1">
+                <div className="col-span-3 sm:col-span-1 flex justify-end">
                   <Button size="icon" variant="ghost" onClick={() => setLines(lines.filter((_, idx) => idx !== i))} disabled={lines.length === 1}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -204,9 +216,19 @@ function NewInvoice() {
       </Card>
 
       <Card className="p-5 space-y-3">
-        <div className="flex justify-between text-lg">
-          <span className="font-medium">Total / کل</span>
-          <span className="font-bold">{fmtRs(total)}</span>
+        <div className="space-y-1">
+          <div className="flex justify-between text-sm">
+            <span>Items Subtotal / اشیاء</span>
+            <span>{fmtRs(itemsSubtotal)}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span>Labor Charges / مزدوری</span>
+            <span>{fmtRs(laborSubtotal)}</span>
+          </div>
+          <div className="border-t pt-2 flex justify-between text-lg">
+            <span className="font-medium">Grand Total / کل</span>
+            <span className="font-bold">{fmtRs(total)}</span>
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -214,7 +236,7 @@ function NewInvoice() {
             <Input type="number" inputMode="decimal" className="h-11" value={paid} onChange={(e) => setPaid(e.target.value)} />
           </div>
           <div className="flex flex-col">
-            <Label>Remaining / بقایا</Label>
+            <Label>Balance Due / بقایا</Label>
             <div className={`h-11 flex items-center font-bold text-lg ${remaining > 0 ? "text-destructive" : "text-success"}`}>{fmtRs(remaining)}</div>
           </div>
         </div>
