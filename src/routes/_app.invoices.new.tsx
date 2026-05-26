@@ -22,14 +22,14 @@ export const Route = createFileRoute("/_app/invoices/new")({
   validateSearch: searchSchema,
 });
 
-interface LineItem { item_id: string; quantity: string; unit_price: string; }
+interface LineItem { item_id: string; quantity: string; unit_price: string; labor_per_unit: string; }
 
 function NewInvoice() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const search = Route.useSearch();
   const [customerId, setCustomerId] = useState(search.customer ?? "");
-  const [lines, setLines] = useState<LineItem[]>([{ item_id: "", quantity: "", unit_price: "" }]);
+  const [lines, setLines] = useState<LineItem[]>([{ item_id: "", quantity: "", unit_price: "", labor_per_unit: "" }]);
   const [paid, setPaid] = useState("0");
   const [busy, setBusy] = useState(false);
   const [addCustomerOpen, setAddCustomerOpen] = useState(false);
@@ -37,15 +37,17 @@ function NewInvoice() {
   const { data } = useQuery({
     queryKey: ["new-invoice-data"],
     queryFn: async () => {
-      const [customers, items, prices] = await Promise.all([
+      const [customers, items, prices, labor] = await Promise.all([
         supabase.from("customers").select("id, name, phone, current_balance").order("name"),
         supabase.from("items").select("*").order("name_en"),
         supabase.from("item_prices").select("*").order("created_at", { ascending: false }),
+        (supabase as any).from("labor_charges").select("item_id, charge_per_unit, unit_label"),
       ]);
-      // Build latest price per item
       const latestPrice = new Map<string, number>();
       (prices.data ?? []).forEach((p) => { if (!latestPrice.has(p.item_id)) latestPrice.set(p.item_id, Number(p.price)); });
-      return { customers: customers.data ?? [], items: items.data ?? [], latestPrice };
+      const laborMap = new Map<string, { charge_per_unit: number; unit_label: string }>();
+      (labor.data ?? []).forEach((l: any) => laborMap.set(l.item_id, { charge_per_unit: Number(l.charge_per_unit), unit_label: l.unit_label ?? "per unit" }));
+      return { customers: customers.data ?? [], items: items.data ?? [], latestPrice, laborMap };
     },
   });
 
@@ -63,6 +65,9 @@ function NewInvoice() {
   const getPriceFor = (itemId: string): number => {
     return customPrices?.get(itemId) ?? data?.latestPrice.get(itemId) ?? 0;
   };
+  const getLaborFor = (itemId: string): number => {
+    return data?.laborMap.get(itemId)?.charge_per_unit ?? 0;
+  };
 
   const updateLine = (i: number, patch: Partial<LineItem>) => {
     setLines((ls) => ls.map((l, idx) => idx === i ? { ...l, ...patch } : l));
@@ -70,19 +75,23 @@ function NewInvoice() {
 
   const onItemChange = (i: number, itemId: string) => {
     const price = getPriceFor(itemId);
-    updateLine(i, { item_id: itemId, unit_price: price ? String(price) : "" });
+    const labor = getLaborFor(itemId);
+    updateLine(i, { item_id: itemId, unit_price: price ? String(price) : "", labor_per_unit: String(labor) });
   };
 
-  // Re-apply prices when customer changes
   useEffect(() => {
     if (!customPrices) return;
     setLines((ls) => ls.map((l) => l.item_id ? { ...l, unit_price: String(getPriceFor(l.item_id)) } : l));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customPrices]);
 
-  const total = useMemo(() =>
+  const itemsSubtotal = useMemo(() =>
     lines.reduce((s, l) => s + (Number(l.quantity) || 0) * (Number(l.unit_price) || 0), 0),
   [lines]);
+  const laborSubtotal = useMemo(() =>
+    lines.reduce((s, l) => s + (Number(l.quantity) || 0) * (Number(l.labor_per_unit) || 0), 0),
+  [lines]);
+  const total = itemsSubtotal + laborSubtotal;
 
   const paidNum = Number(paid) || 0;
   const remaining = total - paidNum;
@@ -96,8 +105,11 @@ function NewInvoice() {
       const { data: result, error } = await supabase.rpc("create_invoice", {
         p_customer_id: customerId,
         p_items: validLines.map((l) => ({
-          item_id: l.item_id, quantity: Number(l.quantity), unit_price: Number(l.unit_price),
-        })),
+          item_id: l.item_id,
+          quantity: Number(l.quantity),
+          unit_price: Number(l.unit_price),
+          labor_per_unit: Number(l.labor_per_unit) || 0,
+        })) as any,
         p_paid_amount: paidNum,
       });
       if (error) throw error;
@@ -152,35 +164,47 @@ function NewInvoice() {
       <Card className="p-5 space-y-3">
         <div className="flex justify-between items-center">
           <h2 className="font-semibold">Items / اشیاء</h2>
-          <Button size="sm" variant="outline" onClick={() => setLines([...lines, { item_id: "", quantity: "", unit_price: "" }])}>
+          <Button size="sm" variant="outline" onClick={() => setLines([...lines, { item_id: "", quantity: "", unit_price: "", labor_per_unit: "" }])}>
             <Plus className="h-4 w-4 mr-1" /> Add Item
           </Button>
         </div>
         <div className="space-y-3">
           {lines.map((line, i) => {
-            const lineTotal = (Number(line.quantity) || 0) * (Number(line.unit_price) || 0);
+            const qty = Number(line.quantity) || 0;
+            const price = Number(line.unit_price) || 0;
+            const labor = Number(line.labor_per_unit) || 0;
+            const laborTotal = qty * labor;
+            const lineTotal = qty * price + laborTotal;
             return (
-              <div key={i} className="grid grid-cols-12 gap-2 items-end">
-                <div className="col-span-12 sm:col-span-5">
+              <div key={i} className="grid grid-cols-12 gap-2 items-end border-b pb-3 last:border-b-0 last:pb-0">
+                <div className="col-span-12 sm:col-span-4">
                   <Label className="text-xs">Item</Label>
                   <Select value={line.item_id} onValueChange={(v) => onItemChange(i, v)}>
                     <SelectTrigger className="h-11"><SelectValue placeholder="Select" /></SelectTrigger>
                     <SelectContent>{data?.items.map((it) => <SelectItem key={it.id} value={it.id}>{it.name_en} ({it.unit})</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
-                <div className="col-span-4 sm:col-span-2">
+                <div className="col-span-3 sm:col-span-1">
                   <Label className="text-xs">Qty</Label>
                   <Input type="number" inputMode="decimal" className="h-11" value={line.quantity} onChange={(e) => updateLine(i, { quantity: e.target.value })} />
                 </div>
-                <div className="col-span-4 sm:col-span-2">
+                <div className="col-span-3 sm:col-span-2">
                   <Label className="text-xs">Price</Label>
                   <Input type="number" inputMode="decimal" className="h-11" value={line.unit_price} onChange={(e) => updateLine(i, { unit_price: e.target.value })} />
                 </div>
-                <div className="col-span-3 sm:col-span-2 text-right">
+                <div className="col-span-3 sm:col-span-2">
+                  <Label className="text-xs">Labor/Unit</Label>
+                  <Input type="number" inputMode="decimal" className="h-11" value={line.labor_per_unit} onChange={(e) => updateLine(i, { labor_per_unit: e.target.value })} />
+                </div>
+                <div className="col-span-3 sm:col-span-1 text-right">
+                  <Label className="text-xs">Labor</Label>
+                  <div className="h-11 flex items-center justify-end text-sm">{fmtRs(laborTotal)}</div>
+                </div>
+                <div className="col-span-9 sm:col-span-1 text-right">
                   <Label className="text-xs">Total</Label>
                   <div className="h-11 flex items-center justify-end font-semibold">{fmtRs(lineTotal)}</div>
                 </div>
-                <div className="col-span-1">
+                <div className="col-span-3 sm:col-span-1 flex justify-end">
                   <Button size="icon" variant="ghost" onClick={() => setLines(lines.filter((_, idx) => idx !== i))} disabled={lines.length === 1}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -192,9 +216,19 @@ function NewInvoice() {
       </Card>
 
       <Card className="p-5 space-y-3">
-        <div className="flex justify-between text-lg">
-          <span className="font-medium">Total / کل</span>
-          <span className="font-bold">{fmtRs(total)}</span>
+        <div className="space-y-1">
+          <div className="flex justify-between text-sm">
+            <span>Items Subtotal / اشیاء</span>
+            <span>{fmtRs(itemsSubtotal)}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span>Labor Charges / مزدوری</span>
+            <span>{fmtRs(laborSubtotal)}</span>
+          </div>
+          <div className="border-t pt-2 flex justify-between text-lg">
+            <span className="font-medium">Grand Total / کل</span>
+            <span className="font-bold">{fmtRs(total)}</span>
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -202,7 +236,7 @@ function NewInvoice() {
             <Input type="number" inputMode="decimal" className="h-11" value={paid} onChange={(e) => setPaid(e.target.value)} />
           </div>
           <div className="flex flex-col">
-            <Label>Remaining / بقایا</Label>
+            <Label>Balance Due / بقایا</Label>
             <div className={`h-11 flex items-center font-bold text-lg ${remaining > 0 ? "text-destructive" : "text-success"}`}>{fmtRs(remaining)}</div>
           </div>
         </div>
