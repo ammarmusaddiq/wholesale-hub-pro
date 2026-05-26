@@ -201,6 +201,8 @@ export type Database = {
           id: string
           invoice_id: string
           item_id: string
+          labor_per_unit: number
+          labor_total: number
           line_total: number
           quantity: number
           unit_price: number
@@ -209,6 +211,8 @@ export type Database = {
           id?: string
           invoice_id: string
           item_id: string
+          labor_per_unit?: number
+          labor_total?: number
           line_total: number
           quantity: number
           unit_price: number
@@ -217,6 +221,8 @@ export type Database = {
           id?: string
           invoice_id?: string
           item_id?: string
+          labor_per_unit?: number
+          labor_total?: number
           line_total?: number
           quantity?: number
           unit_price?: number
