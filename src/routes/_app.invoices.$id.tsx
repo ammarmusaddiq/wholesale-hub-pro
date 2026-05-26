@@ -63,6 +63,7 @@ function InvoiceView() {
               <th className="py-2 px-2 text-left">Item / آئٹم</th>
               <th className="py-2 px-2 text-right">Qty</th>
               <th className="py-2 px-2 text-right">Price</th>
+              <th className="py-2 px-2 text-right">Labor/Unit</th>
               <th className="py-2 px-2 text-right">Total</th>
             </tr>
           </thead>
@@ -75,19 +76,30 @@ function InvoiceView() {
                 </td>
                 <td className="py-2 px-2 text-right">{Number(it.quantity)} {it.items?.unit}</td>
                 <td className="py-2 px-2 text-right">{fmtRs(it.unit_price)}</td>
+                <td className="py-2 px-2 text-right">{fmtRs(it.labor_per_unit ?? 0)}</td>
                 <td className="py-2 px-2 text-right font-medium">{fmtRs(it.line_total)}</td>
               </tr>
             ))}
           </tbody>
         </table>
 
-        <div className="mt-5 space-y-1 ml-auto max-w-xs">
-          <Row label="Subtotal / کل" value={fmtRs(inv.total_amount)} />
-          <Row label="Paid / ادا شدہ" value={fmtRs(inv.paid_amount)} tone="success" />
-          <div className="border-t pt-2">
-            <Row label="Balance / بقایا" value={fmtRs(Number(inv.total_amount) - Number(inv.paid_amount))} bold tone={inv.status === "paid" ? "success" : "destructive"} />
-          </div>
-        </div>
+        {(() => {
+          const laborTotal = (data.items as any[]).reduce((s, it) => s + Number(it.labor_total ?? 0), 0);
+          const itemsSub = Number(inv.total_amount) - laborTotal;
+          return (
+            <div className="mt-5 space-y-1 ml-auto max-w-xs">
+              <Row label="Items Subtotal / اشیاء" value={fmtRs(itemsSub)} />
+              <Row label="Labor Charges / مزدوری" value={fmtRs(laborTotal)} />
+              <div className="border-t pt-2">
+                <Row label="Grand Total / کل" value={fmtRs(inv.total_amount)} bold />
+              </div>
+              <Row label="Paid / ادا شدہ" value={fmtRs(inv.paid_amount)} tone="success" />
+              <div className="border-t pt-2">
+                <Row label="Balance Due / بقایا" value={fmtRs(Number(inv.total_amount) - Number(inv.paid_amount))} bold tone={inv.status === "paid" ? "success" : "destructive"} />
+              </div>
+            </div>
+          );
+        })()}
 
         <div className="text-center text-xs text-muted-foreground mt-8 pt-4 border-t">
           Thank you for your business / آپ کی کاروبار کا شکریہ
