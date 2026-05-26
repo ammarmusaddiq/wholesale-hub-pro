@@ -341,6 +341,48 @@ export type Database = {
         }
         Relationships: []
       }
+      labor_charges: {
+        Row: {
+          charge_per_unit: number
+          id: string
+          item_id: string | null
+          unit_label: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          charge_per_unit?: number
+          id?: string
+          item_id?: string | null
+          unit_label?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          charge_per_unit?: number
+          id?: string
+          item_id?: string | null
+          unit_label?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "labor_charges_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: true
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "labor_charges_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
