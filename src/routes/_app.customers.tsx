@@ -17,6 +17,7 @@ export const Route = createFileRoute("/_app/customers")({ component: CustomersPa
 
 function CustomersPage() {
   const [q, setQ] = useState("");
+  const [selected, setSelected] = useState<any>(null);
   const { data: customers, refetch } = useQuery({
     queryKey: ["customers"],
     queryFn: async () => {
