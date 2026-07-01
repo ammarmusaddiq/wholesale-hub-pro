@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { SupplierTransactionsDialog } from "@/components/SupplierTransactionsDialog";
 import { fmtRs } from "@/lib/i18n";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -15,6 +16,7 @@ import { Plus } from "lucide-react";
 export const Route = createFileRoute("/_app/suppliers")({ component: SuppliersPage });
 
 function SuppliersPage() {
+  const [selected, setSelected] = useState<any>(null);
   const { data, refetch } = useQuery({
     queryKey: ["suppliers"],
     queryFn: async () => (await supabase.from("suppliers").select("*").order("name")).data ?? [],
@@ -28,23 +30,22 @@ function SuppliersPage() {
       </div>
       <div className="grid gap-3">
         {data?.map((s) => (
-          <Link key={s.id} to="/suppliers/$id" params={{ id: s.id }}>
-            <Card className="p-4 hover:bg-accent">
-              <div className="flex justify-between">
-                <div>
-                  <div className="font-semibold">{s.name}</div>
-                  <div className="text-sm text-muted-foreground">{s.phone || "—"}</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-xs text-muted-foreground">We owe / واجب الادا</div>
-                  <div className={`text-lg font-bold ${Number(s.current_balance) > 0 ? "text-warning" : "text-success"}`}>{fmtRs(s.current_balance)}</div>
-                </div>
+          <Card key={s.id} className="p-4 hover:bg-accent cursor-pointer" onClick={() => setSelected(s)}>
+            <div className="flex justify-between">
+              <div>
+                <div className="font-semibold">{s.name}</div>
+                <div className="text-sm text-muted-foreground">{s.phone || "—"}</div>
               </div>
-            </Card>
-          </Link>
+              <div className="text-right">
+                <div className="text-xs text-muted-foreground">We owe / واجب الادا</div>
+                <div className={`text-lg font-bold ${Number(s.current_balance) > 0 ? "text-warning" : "text-success"}`}>{fmtRs(s.current_balance)}</div>
+              </div>
+            </div>
+          </Card>
         ))}
         {data?.length === 0 && <p className="text-center text-muted-foreground py-8">No suppliers yet.</p>}
       </div>
+      <SupplierTransactionsDialog supplier={selected} open={!!selected} onOpenChange={(o) => !o && setSelected(null)} />
     </div>
   );
 }
