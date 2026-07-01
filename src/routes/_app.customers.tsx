@@ -44,26 +44,25 @@ function CustomersPage() {
 
       <div className="grid gap-3">
         {filtered?.map((c) => (
-          <Link key={c.id} to="/customers/$id" params={{ id: c.id }}>
-            <Card className="p-4 hover:bg-accent transition-colors">
-              <div className="flex justify-between items-start">
-                <div>
-                  <div className="font-semibold">{c.name}</div>
-                  <div className="text-sm text-muted-foreground">{c.phone || "—"}</div>
-                  {c.address && <div className="text-xs text-muted-foreground mt-1">{c.address}</div>}
-                </div>
-                <div className="text-right">
-                  <div className="text-xs text-muted-foreground">Balance / بقایا</div>
-                  <div className={`text-lg font-bold ${Number(c.current_balance) > 0 ? "text-destructive" : "text-success"}`}>
-                    {fmtRs(c.current_balance)}
-                  </div>
+          <Card key={c.id} className="p-4 hover:bg-accent transition-colors cursor-pointer" onClick={() => setSelected(c)}>
+            <div className="flex justify-between items-start">
+              <div>
+                <div className="font-semibold">{c.name}</div>
+                <div className="text-sm text-muted-foreground">{c.phone || "—"}</div>
+                {c.address && <div className="text-xs text-muted-foreground mt-1">{c.address}</div>}
+              </div>
+              <div className="text-right">
+                <div className="text-xs text-muted-foreground">Balance / بقایا</div>
+                <div className={`text-lg font-bold ${Number(c.current_balance) > 0 ? "text-destructive" : "text-success"}`}>
+                  {fmtRs(c.current_balance)}
                 </div>
               </div>
-            </Card>
-          </Link>
+            </div>
+          </Card>
         ))}
         {filtered?.length === 0 && <p className="text-center text-muted-foreground py-8">No customers found.</p>}
       </div>
+      <CustomerTransactionsDialog customer={selected} open={!!selected} onOpenChange={(o) => !o && setSelected(null)} />
     </div>
   );
 }
