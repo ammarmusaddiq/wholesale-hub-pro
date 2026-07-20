@@ -13,7 +13,7 @@ export default defineTool({
   handler: async ({ search }, ctx) => {
     if (!ctx.isAuthenticated()) return unauth();
     const sb = supabaseForUser(ctx);
-    let q = sb.from("suppliers").select("id, name, phone, address, balance").order("name");
+    let q = sb.from("suppliers").select("id, name, phone, address, current_balance").order("name");
     if (search) q = q.or(`name.ilike.%${search}%,phone.ilike.%${search}%`);
     const { data, error } = await q;
     if (error) return errorResult(error.message);

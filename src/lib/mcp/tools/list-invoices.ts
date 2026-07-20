@@ -5,7 +5,7 @@ import { supabaseForUser, unauth, errorResult, jsonResult } from "../supabase";
 export default defineTool({
   name: "list_invoices",
   title: "List invoices",
-  description: "List invoices, optionally filtered by customer or date range (YYYY-MM-DD).",
+  description: "List invoices, optionally filtered by customer or date range (YYYY-MM-DD, applied to created_at).",
   inputSchema: {
     customer_id: z.string().uuid().optional(),
     from_date: z.string().optional(),
@@ -18,12 +18,12 @@ export default defineTool({
     const sb = supabaseForUser(ctx);
     let q = sb
       .from("invoices")
-      .select("id, invoice_number, invoice_date, total, paid, status, customer_id, customers(name)")
-      .order("invoice_date", { ascending: false })
+      .select("id, invoice_number, created_at, total_amount, paid_amount, status, customer_id, customers(name)")
+      .order("created_at", { ascending: false })
       .limit(limit ?? 50);
     if (customer_id) q = q.eq("customer_id", customer_id);
-    if (from_date) q = q.gte("invoice_date", from_date);
-    if (to_date) q = q.lte("invoice_date", to_date);
+    if (from_date) q = q.gte("created_at", from_date);
+    if (to_date) q = q.lte("created_at", `${to_date}T23:59:59.999Z`);
     const { data, error } = await q;
     if (error) return errorResult(error.message);
     return jsonResult(data);

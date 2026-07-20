@@ -77,7 +77,7 @@
       {
         "name": "list_items",
         "title": "List items and prices",
-        "description": "List catalog items (oil, ghee, sugar, rice, flour, etc.) with current selling price.",
+        "description": "List catalog items (oil, ghee, sugar, rice, flour, etc.) with unit and latest price.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -97,7 +97,7 @@
       {
         "name": "list_stock",
         "title": "List current stock",
-        "description": "Current on-hand stock per item. Set low_only=true to only return items at or below their reorder level.",
+        "description": "Current on-hand stock per item. Set low_only=true to only return items at or below their low-stock threshold.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -117,7 +117,7 @@
       {
         "name": "list_invoices",
         "title": "List invoices",
-        "description": "List invoices, optionally filtered by customer or date range (YYYY-MM-DD).",
+        "description": "List invoices, optionally filtered by customer or date range (YYYY-MM-DD, applied to created_at).",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -150,7 +150,7 @@
       {
         "name": "get_invoice",
         "title": "Get invoice detail",
-        "description": "Get a single invoice with its line items and payments.",
+        "description": "Get a single invoice with its line items, customer, and payments.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -195,7 +195,7 @@
       {
         "name": "sales_summary",
         "title": "Sales summary",
-        "description": "Totals for invoices in a date range (YYYY-MM-DD). Returns invoice count, total sales, total collected, and outstanding.",
+        "description": "Totals for invoices in a date range (YYYY-MM-DD, applied to created_at). Returns invoice count, total sales, total collected, and outstanding.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,

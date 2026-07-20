@@ -5,7 +5,7 @@ import { supabaseForUser, unauth, errorResult, jsonResult } from "../supabase";
 export default defineTool({
   name: "get_invoice",
   title: "Get invoice detail",
-  description: "Get a single invoice with its line items and payments.",
+  description: "Get a single invoice with its line items, customer, and payments.",
   inputSchema: {
     invoice_id: z.string().uuid(),
   },
@@ -13,13 +13,20 @@ export default defineTool({
   handler: async ({ invoice_id }, ctx) => {
     if (!ctx.isAuthenticated()) return unauth();
     const sb = supabaseForUser(ctx);
-    const { data, error } = await sb
-      .from("invoices")
-      .select("*, customers(name, phone), invoice_items(*, items(name, unit))")
-      .eq("id", invoice_id)
-      .maybeSingle();
-    if (error) return errorResult(error.message);
-    if (!data) return errorResult("Invoice not found");
-    return jsonResult(data);
+    const [inv, pay] = await Promise.all([
+      sb
+        .from("invoices")
+        .select("*, customers(name, phone), invoice_items(*, items(name_en, name_ur, unit))")
+        .eq("id", invoice_id)
+        .maybeSingle(),
+      sb
+        .from("customer_payments")
+        .select("id, amount, created_at, method, note")
+        .eq("invoice_id", invoice_id)
+        .order("created_at", { ascending: false }),
+    ]);
+    if (inv.error) return errorResult(inv.error.message);
+    if (!inv.data) return errorResult("Invoice not found");
+    return jsonResult({ ...inv.data, payments: pay.data ?? [] });
   },
 });
